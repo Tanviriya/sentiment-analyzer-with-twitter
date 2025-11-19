@@ -1,9 +1,5 @@
 import pandas as pd
-import numpy as np
 import re
-import matplotlib.pyplot as plt
-import seaborn as sns
-from wordcloud import WordCloud
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -17,10 +13,8 @@ from textblob import TextBlob
 # Machine Learning Libraries
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.metrics import classification_report, accuracy_score
 from sklearn.pipeline import Pipeline
 
 # Download required NLTK data
@@ -40,8 +34,6 @@ class TwitterSentimentAnalyzer:
     def __init__(self):
         self.stop_words = set(stopwords.words('english'))
         self.lemmatizer = WordNetLemmatizer()
-        self.vectorizer = TfidfVectorizer(max_features=5000, ngram_range=(1, 2))
-        self.model = None
         self.pipeline = None
         
     def preprocess_text(self, text):
@@ -159,7 +151,7 @@ class TwitterSentimentAnalyzer:
         X = df['processed_text']
         y = df['sentiment']
         
-        # Split data (remove stratify for small datasets)
+        # Split data
         X_train, X_test, y_train, y_test = train_test_split(
             X, y, test_size=0.3, random_state=42
         )
@@ -167,7 +159,7 @@ class TwitterSentimentAnalyzer:
         # Create pipeline with TF-IDF and Logistic Regression
         self.pipeline = Pipeline([
             ('tfidf', TfidfVectorizer(max_features=5000, ngram_range=(1, 2))),
-            ('classifier', LogisticRegression(random_state=42))
+            ('classifier', LogisticRegression(random_state=42, max_iter=1000))
         ])
         
         # Train model
@@ -215,63 +207,6 @@ class TwitterSentimentAnalyzer:
             results.append(result)
         
         return pd.DataFrame(results)
-    
-    def visualize_sentiment_distribution(self, df):
-        """
-        Visualize sentiment distribution
-        """
-        plt.figure(figsize=(12, 8))
-        
-        # Sentiment distribution
-        plt.subplot(2, 2, 1)
-        sentiment_counts = df['sentiment'].value_counts()
-        plt.pie(sentiment_counts.values, labels=sentiment_counts.index, autopct='%1.1f%%')
-        plt.title('Sentiment Distribution')
-        
-        # Confidence distribution
-        plt.subplot(2, 2, 2)
-        plt.hist(df['confidence'], bins=20, alpha=0.7, color='skyblue')
-        plt.xlabel('Confidence Score')
-        plt.ylabel('Frequency')
-        plt.title('Confidence Score Distribution')
-        
-        # Sentiment comparison
-        plt.subplot(2, 2, 3)
-        comparison_df = df.groupby(['sentiment', 'textblob_sentiment']).size().unstack(fill_value=0)
-        comparison_df.plot(kind='bar', ax=plt.gca())
-        plt.title('Model vs TextBlob Sentiment Comparison')
-        plt.xticks(rotation=45)
-        
-        # Text length distribution by sentiment
-        plt.subplot(2, 2, 4)
-        df['text_length'] = df['text'].str.len()
-        for sentiment in df['sentiment'].unique():
-            data = df[df['sentiment'] == sentiment]['text_length']
-            plt.hist(data, alpha=0.7, label=sentiment, bins=15)
-        plt.xlabel('Text Length')
-        plt.ylabel('Frequency')
-        plt.title('Text Length Distribution by Sentiment')
-        plt.legend()
-        
-        plt.tight_layout()
-        plt.show()
-    
-    def generate_wordcloud(self, df, sentiment_type='positive'):
-        """
-        Generate word cloud for specific sentiment
-        """
-        sentiment_text = ' '.join(df[df['sentiment'] == sentiment_type]['text'])
-        processed_text = self.preprocess_text(sentiment_text)
-        
-        wordcloud = WordCloud(width=800, height=400, 
-                            background_color='white',
-                            colormap='viridis').generate(processed_text)
-        
-        plt.figure(figsize=(10, 5))
-        plt.imshow(wordcloud, interpolation='bilinear')
-        plt.axis('off')
-        plt.title(f'Word Cloud for {sentiment_type.title()} Sentiment')
-        plt.show()
 
 # Main execution
 if __name__ == "__main__":
@@ -318,22 +253,9 @@ if __name__ == "__main__":
         print(f"Confidence: {result['confidence']:.4f}")
         print(f"TextBlob Sentiment: {result['textblob_sentiment']}")
     
-    # Visualizations
-    print("\n5. Generating visualizations...")
-    analyzer.visualize_sentiment_distribution(results)
-    
-    print("\n6. Generating word clouds...")
-    # Note: Word clouds might not work well with small sample data
-    try:
-        analyzer.generate_wordcloud(df, 'positive')
-        analyzer.generate_wordcloud(df, 'negative')
-    except Exception as e:
-        print(f"Word cloud generation failed: {e}")
-    
     print("\n✅ Sentiment analysis complete!")
     print("\nNext steps:")
     print("- Connect to Twitter API for real-time data")
     print("- Expand training data with larger datasets")
     print("- Implement deep learning models (LSTM, BERT)")
-    print("- Add more sophisticated preprocessing")
     print("- Deploy as web application or API")
